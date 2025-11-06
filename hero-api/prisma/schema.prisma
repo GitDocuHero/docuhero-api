@@ -1,2 +1,151 @@
-// Prisma schema file
+// Prisma Schema for DocuHero API
+// Based on Team Member & User Schema requirements
 
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum for User Roles
+enum UserRole {
+  CLIENT           // Read-only access to own profile
+  PROVIDER         // Lowest-privilege provider-only level
+  SUPERVISOR       // Case Manager/Supervisor with higher privileges
+  AGENCY_ADMIN     // Agency administrator
+}
+
+// Enum for Agency Types
+enum AgencyType {
+  AGENCY          // Regular agency with employees
+  SOLO_PRACTICE   // Independent provider (sole proprietor)
+}
+
+// Enum for Active Sectors
+enum Sector {
+  DD              // Developmental Disabilities
+  HOME_HEALTH     // Home Health
+  // Add more sectors as needed
+}
+
+// Enum for Patient Status
+enum PatientStatus {
+  ACTIVE
+  PENDING
+  HOSPITALIZED
+  DISCHARGED
+}
+
+// Enum for Risk Level
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// User Model - Represents all types of authenticated users
+// Supports: Agency Admin, Provider/Employee, Case Manager/Supervisor, Client (read-only), Independent Provider
+model User {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  password    String?  // Hashed password (null for invited users)
+  phone       String?
+  role        UserRole
+  title       String?  // Job title for display on reports
+  specialties String[] // For Case Managers/Supervisors (e.g., ["behavioral_support", "autism"])
+  
+  // Relationships
+  agencyId    String?  @map("agency_id")
+  agency      Agency?  @relation("AgencyUsers", fields: [agencyId], references: [id])
+  
+  supervisorId String? @map("supervisor_id")
+  supervisor   User?   @relation("UserSupervisor", fields: [supervisorId], references: [id])
+  supervisees  User[]  @relation("UserSupervisor")
+  
+  // Client-specific field: Links CLIENT role users to their patient profile
+  patientLink String?  @unique @map("patient_link") // patientId they can view
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([agencyId])
+  @@index([supervisorId])
+  @@index([email])
+  @@map("users")
+}
+
+// Agency Model - Represents both regular agencies and solo practices
+model Agency {
+  id             String      @id @default(cuid())
+  name           String      // Public-facing display name
+  legalName      String?     // Legal name for contracts and billing (optional for solo practice)
+  agencyType     AgencyType  // AGENCY or SOLO_PRACTICE
+  ein            String?     // Tax ID (EIN) - required for agencies, optional for solo
+  defaultState   String      // Sets default compliance pack (e.g., "OH")
+  activeSectors  Sector[]    // Sectors the agency operates in
+  agencyMPI      String?     // National Provider Identifier (NPI/MPI)
+  providerNumbers Json?      // Flexible JSON: [{"payer": "Medicaid_OH", "id": "M123"}]
+  
+  // Address fields
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?     @map("zip_code")
+  
+  // Relationships
+  users          User[]      @relation("AgencyUsers")
+  patients       Patient[]   @relation("AgencyPatients")
+  
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@index([agencyType])
+  @@index([defaultState])
+  @@map("agencies")
+}
+
+// Patient Model - Represents Person Served (Client) with PHI data
+// All sensitive fields are marked as encrypted in comments - encryption handled at application layer
+model Patient {
+  id                    String        @id @default(cuid())
+  
+  // Encrypted PHI Fields
+  encryptedFirstName    String        @map("encrypted_first_name") // PHI: Legal first name
+  encryptedLastName     String        @map("encrypted_last_name")  // PHI: Legal last name
+  preferredName         String        @map("preferred_name")       // What Provider should call them
+  encryptedDOB          DateTime      @map("encrypted_dob")        // PHI: Date of birth
+  encryptedSSN          String?       @map("encrypted_ssn")        // PHI: Required for billing/ID
+  encryptedMedicaidNumber String?     @map("encrypted_medicaid_number") // PHI: Primary funding ID
+  encryptedInsuranceInfo Json?        @map("encrypted_insurance_info") // PHI: [{"payer": "Aetna", "policy": "123"}]
+  encryptedAddress      Json?         @map("encrypted_address")    // PHI: Residential address
+  
+  // Status and Risk Management
+  status                PatientStatus @default(ACTIVE)
+  riskLevel             RiskLevel?    @map("risk_level") // (LOW, MEDIUM, HIGH) for crisis prevention
+  admissionDate         DateTime      @map("admission_date") // For tracking service duration
+  
+  // Consent and Contact Information
+  consents              Json?         // {"photoRelease": true, "dataSharing": false} - HIPAA/FERPA/Photo
+  emergencyContacts     Json?         @map("emergency_contacts") // [{"name": "Mary Mays", "relation": "Mother"}]
+  externalContacts      Json?         @map("external_contacts") // [{"role": "PCP", "name": "Dr. Smith"}]
+  
+  // Critical At-a-Glance Field for Providers
+  clientSummary         Json?         @map("client_summary") // Structured summary data
+  
+  // Relationships
+  agencyId              String?       @map("agency_id")
+  agency                Agency?       @relation("AgencyPatients", fields: [agencyId], references: [id])
+  
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  @@index([agencyId])
+  @@index([status])
+  @@index([riskLevel])
+  @@map("patients")
+}

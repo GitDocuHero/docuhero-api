@@ -1,2 +1,7 @@
 # Git ignore file
 
+# Environment and credentials
+.env
+.env.local
+DATABASE_CREDENTIALS.txt
+
