@@ -43,5 +43,5 @@ availableSecrets:
     - versionName: projects/docuhero-583a5/secrets/DATABASE_URL/versions/latest
       env: 'DATABASE_URL'
 
- images:
+images:
   - 'gcr.io/$PROJECT_ID/hero-api:$COMMIT_SHA'
