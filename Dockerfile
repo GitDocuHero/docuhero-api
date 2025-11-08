@@ -1,15 +1,13 @@
-# Dockerfile
-
 FROM node:20-alpine
 
-WORKDIR /app
+ WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+ COPY package*.json ./
+ RUN npm ci --only=production
 
-COPY . .
-RUN npx prisma generate
+ COPY . .
+ RUN npx prisma generate
 
-EXPOSE 8080
+ EXPOSE 8080
 
-CMD ["npm", "start"]
+ CMD ["npm", "start"]

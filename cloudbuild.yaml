@@ -1,7 +1,6 @@
-# Cloud Build configuration
 steps:
   # Step 1: Run database migrations
-  - name: 'node:18'
+  - name: 'node:20'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -10,8 +9,8 @@ steps:
         npx prisma generate
         npx prisma migrate deploy
     env:
-      - 'DATABASE_URL=postgresql://dbuser:$$DB_PASSWORD@/docuhero?host=/cloudsql/docuhero-583a5:us-east1:docuhero-db&schema=public'
-    secretEnv: ['DB_PASSWORD']
+      - 'DATABASE_URL=$$DATABASE_URL'
+    secretEnv: ['DATABASE_URL']
 
   # Step 2: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -36,11 +35,13 @@ steps:
       - 'managed'
       - '--add-cloudsql-instances'
       - 'docuhero-583a5:us-east1:docuhero-db'
+      - '--update-secrets'
+      - 'DATABASE_URL=DATABASE_URL:latest'
 
 availableSecrets:
   secretManager:
-    - versionName: projects/docuhero-583a5/secrets/db-password/versions/latest
-      env: 'DB_PASSWORD'
+    - versionName: projects/docuhero-583a5/secrets/DATABASE_URL/versions/latest
+      env: 'DATABASE_URL'
 
-images:
+ images:
   - 'gcr.io/$PROJECT_ID/hero-api:$COMMIT_SHA'
