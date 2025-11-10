@@ -37,7 +37,7 @@ jobs:
           gcloud builds submit . \
             --config=cloudbuild.yaml \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
-            --service-account=projects/docuhero-583a5/serviceAccounts/1027156300345@cloudbuild.gserviceaccount.com \
+            --service-account=projects/docuhero-583a5/serviceAccounts/docuhero-api-wif@docuhero-583a5.iam.gserviceaccount.com \
             --project=${PROJECT_ID}
           
           echo "✅ Build completed successfully"
