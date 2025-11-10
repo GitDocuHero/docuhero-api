@@ -38,7 +38,6 @@ jobs:
             --config=cloudbuild.yaml \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
             --service-account=projects/docuhero-583a5/serviceAccounts/docuhero-api-wif@docuhero-583a5.iam.gserviceaccount.com \
-            --logging=CLOUD_LOGGING_ONLY \
             --project=${PROJECT_ID}
           
           echo "✅ Build completed successfully"

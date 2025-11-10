@@ -45,3 +45,6 @@ availableSecrets:
 
 images:
   - 'gcr.io/$PROJECT_ID/hero-api:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
