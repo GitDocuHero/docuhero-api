@@ -38,6 +38,9 @@ steps:
       - '--update-secrets'
       - 'DATABASE_URL=DATABASE_URL:latest'
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 availableSecrets:
   secretManager:
     - versionName: projects/docuhero-583a5/secrets/DATABASE_URL/versions/latest
