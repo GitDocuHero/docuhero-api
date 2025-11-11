@@ -33,10 +33,11 @@ jobs:
           echo "Submitting build..."
           echo "Commit SHA: ${COMMIT_SHA}"
           
-          # Submit build using Cloud Build service account
+          # Submit build using user-managed service account
           gcloud builds submit . \
             --config=cloudbuild.yaml \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
+            --service-account=projects/docuhero-583a5/serviceAccounts/cloudbuild-sa@docuhero-583a5.iam.gserviceaccount.com \
             --project=${PROJECT_ID}
           
           echo "✅ Build completed successfully"
