@@ -33,10 +33,11 @@ jobs:
           echo "Submitting build..."
           echo "Commit SHA: ${COMMIT_SHA}"
           
-          # Submit build directly - organization policy constraint is now relaxed
+          # Submit build using Cloud Build service account
           gcloud builds submit . \
             --config=cloudbuild.yaml \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
+            --service-account=projects/docuhero-583a5/serviceAccounts/1027156300345@cloudbuild.gserviceaccount.com \
             --project=${PROJECT_ID}
           
           echo "✅ Build completed successfully"
