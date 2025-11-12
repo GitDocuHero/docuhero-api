@@ -29,15 +29,14 @@ jobs:
         run: |
           PROJECT_ID="docuhero-583a5"
           COMMIT_SHA="${{ github.sha }}"
-          
+
           echo "Submitting build..."
           echo "Commit SHA: ${COMMIT_SHA}"
-          
-          # Submit build using user-managed service account
+
+          # Submit build using WIF service account
           gcloud builds submit . \
             --config=cloudbuild.yaml \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
-            --service-account=projects/docuhero-583a5/serviceAccounts/cloudbuild-sa@docuhero-583a5.iam.gserviceaccount.com \
             --project=${PROJECT_ID}
-          
+
           echo "✅ Build completed successfully"
