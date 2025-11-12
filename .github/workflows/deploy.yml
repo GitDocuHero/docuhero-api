@@ -1,42 +1,49 @@
-name: Deploy to Cloud Run
+# DISABLED: Now using Cloud Build Triggers for automatic deployment
+# Cloud Build trigger "deploy-hero-api-main" handles deployments on push to main
+# See: https://console.cloud.google.com/cloud-build/triggers
+#
+# This workflow is kept for reference but is disabled by commenting out the trigger
+# To re-enable: uncomment the lines below
 
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
-
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
-
-      - name: 'Submit build'
-        run: |
-          PROJECT_ID="docuhero-583a5"
-          COMMIT_SHA="${{ github.sha }}"
-
-          echo "Submitting build..."
-          echo "Commit SHA: ${COMMIT_SHA}"
-
-          # Submit build using WIF service account
-          gcloud builds submit . \
-            --config=cloudbuild.yaml \
-            --substitutions=COMMIT_SHA=${COMMIT_SHA} \
-            --project=${PROJECT_ID}
-
-          echo "✅ Build completed successfully"
+# name: Deploy to Cloud Run
+#
+# on:
+#   push:
+#     branches:
+#       - main
+#
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#
+#     permissions:
+#       contents: read
+#       id-token: write
+#
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - id: 'auth'
+#         uses: 'google-github-actions/auth@v2'
+#         with:
+#           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+#           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+#
+#       - name: 'Set up Cloud SDK'
+#         uses: 'google-github-actions/setup-gcloud@v2'
+#
+#       - name: 'Submit build'
+#         run: |
+#           PROJECT_ID="docuhero-583a5"
+#           COMMIT_SHA="${{ github.sha }}"
+#
+#           echo "Submitting build..."
+#           echo "Commit SHA: ${COMMIT_SHA}"
+#
+#           # Submit build using WIF service account
+#           gcloud builds submit . \
+#             --config=cloudbuild.yaml \
+#             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
+#             --project=${PROJECT_ID}
+#
+#           echo "✅ Build completed successfully"
