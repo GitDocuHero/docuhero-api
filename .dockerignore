@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+npm-debug.log
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Development files
+*.md
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+
+# Test files
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+__tests__/
+coverage/
+
+# Documentation
+docs/
+
+# CI/CD
+.github/
+cloudbuild.yaml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Scripts
+scripts/

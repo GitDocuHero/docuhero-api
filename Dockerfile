@@ -1,13 +1,17 @@
 FROM node:20-alpine
 
- WORKDIR /app
+WORKDIR /app
 
- COPY package*.json ./
- RUN npm ci --only=production
+COPY package*.json ./
+RUN npm ci
 
- COPY . .
- RUN npx prisma generate
+COPY . .
+RUN npx prisma generate
+RUN npm run build
 
- EXPOSE 8080
+# Remove dev dependencies to reduce image size
+RUN npm prune --production
 
- CMD ["npm", "start"]
+EXPOSE 8080
+
+CMD ["npm", "start"]

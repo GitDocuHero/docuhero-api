@@ -34,7 +34,10 @@ steps:
       - '--add-cloudsql-instances'
       - 'docuhero-583a5:us-east1:docuhero-db'
       - '--update-secrets'
-      - 'DATABASE_URL=DATABASE_URL:latest'
+      - 'DATABASE_URL=DATABASE_URL:latest,FIREBASE_KEY=FIREBASE_KEY:latest,FIREBASE_WEBAPP_CONFIG=FIREBASE_WEBAPP_CONFIG:latest,GEMINI_KEY=GEMINI_KEY:latest'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,PORT=8080'
+      - '--allow-unauthenticated'
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -43,6 +46,12 @@ availableSecrets:
   secretManager:
     - versionName: projects/docuhero-583a5/secrets/DATABASE_URL/versions/latest
       env: 'DATABASE_URL'
+    - versionName: projects/docuhero-583a5/secrets/FIREBASE_KEY/versions/latest
+      env: 'FIREBASE_KEY'
+    - versionName: projects/docuhero-583a5/secrets/FIREBASE_WEBAPP_CONFIG/versions/latest
+      env: 'FIREBASE_WEBAPP_CONFIG'
+    - versionName: projects/docuhero-583a5/secrets/GEMINI_KEY/versions/latest
+      env: 'GEMINI_KEY'
 
 images:
   - 'gcr.io/$PROJECT_ID/hero-api:$COMMIT_SHA'
