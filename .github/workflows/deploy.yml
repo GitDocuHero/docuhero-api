@@ -33,9 +33,10 @@ jobs:
           echo "Submitting build..."
           echo "Commit SHA: ${COMMIT_SHA}"
 
-          # Submit build using WIF service account
+          # Submit build using Compute Engine default service account
           gcloud builds submit . \
             --config=cloudbuild.yaml \
+            --service-account=projects/docuhero-583a5/serviceAccounts/1027156300345-compute@developer.gserviceaccount.com \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
             --project=${PROJECT_ID}
 
