@@ -2,6 +2,11 @@
 node_modules/
 npm-debug.log
 
+# But include lock files
+!package-lock.json
+!yarn.lock
+!pnpm-lock.yaml
+
 # Git
 .git/
 .gitignore

@@ -8,10 +8,8 @@ RUN npm ci
 COPY . .
 RUN npx prisma generate
 RUN npm run build
-
-# Remove dev dependencies to reduce image size
 RUN npm prune --production
 
 EXPOSE 8080
 
-CMD ["npm", "start"]
+CMD sh -c "npx prisma migrate deploy && npm start"
