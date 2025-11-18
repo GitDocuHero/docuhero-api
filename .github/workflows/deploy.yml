@@ -37,7 +37,7 @@ jobs:
           gcloud builds submit . \
             --config=cloudbuild.yaml \
             --service-account=projects/docuherocopy/serviceAccounts/888522084120-compute@developer.gserviceaccount.com \
-            --substitutions=COMMIT_SHA=${COMMIT_SHA} \
+            --substitutions=COMMIT_SHA=${COMMIT_SHA},PROJECT_ID=${PROJECT_ID} \
             --project=${PROJECT_ID}
 
           echo "✅ Build completed successfully"
