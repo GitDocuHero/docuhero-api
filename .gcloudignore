@@ -1,0 +1,61 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore, with the addition of
+# "#!include" directives (which insert the entries of the given .gitignore-style
+# file at that point).
+
+# For more information, run:
+#   $ gcloud topic gcloudignore
+
+.gcloudignore
+.git
+.gitignore
+
+# Node.js dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Development and documentation
+*.md
+!README.md
+.vscode/
+.idea/
+docs/
+
+# Test files
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+__tests__/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Credentials and secrets (but NOT package-lock.json!)
+*credentials*
+*secret*
+*secrets*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*-key.json
+config/secrets.json
+config/credentials.json
+DATABASE_CREDENTIALS.txt
+
+# Scripts (PowerShell scripts not needed in cloud)
+scripts/
+
+# GitHub Actions
+.github/
