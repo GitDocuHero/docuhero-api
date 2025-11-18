@@ -27,7 +27,7 @@ jobs:
 
       - name: 'Submit build'
         run: |
-          PROJECT_ID="docuhero-583a5"
+          PROJECT_ID="docuherocopy"
           COMMIT_SHA="${{ github.sha }}"
 
           echo "Submitting build..."
@@ -36,7 +36,7 @@ jobs:
           # Submit build using Compute Engine default service account
           gcloud builds submit . \
             --config=cloudbuild.yaml \
-            --service-account=projects/docuhero-583a5/serviceAccounts/1027156300345-compute@developer.gserviceaccount.com \
+            --service-account=projects/docuherocopy/serviceAccounts/888522084120-compute@developer.gserviceaccount.com \
             --substitutions=COMMIT_SHA=${COMMIT_SHA} \
             --project=${PROJECT_ID}
 
