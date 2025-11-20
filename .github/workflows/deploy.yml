@@ -30,8 +30,9 @@ jobs:
           PROJECT_ID="docu-hero"
           COMMIT_SHA="${{ github.sha }}"
 
-          echo "Submitting build..."
-          echo "Commit SHA: ${COMMIT_SHA}"
+          echo "🚀 Submitting build to Cloud Build..."
+          echo "📦 Commit SHA: ${COMMIT_SHA}"
+          echo "☁️  Project: ${PROJECT_ID}"
 
           # Submit build using Compute Engine default service account
           gcloud builds submit . \
