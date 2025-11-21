@@ -23,10 +23,9 @@ steps:
       - '--add-cloudsql-instances'
       - '${_TARGET_PROJECT}:us-east1:docuhero-db'
       - '--update-secrets'
-      - 'DATABASE_URL=DATABASE_URL:latest'
+      - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
-      - '--allow-unauthenticated'
+      - 'NODE_ENV=production,FRONTEND_URL=https://hero-ui-w53h35jjsq-ue.a.run.app'
 
 options:
   logging: CLOUD_LOGGING_ONLY
