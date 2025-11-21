@@ -1,4 +1,5 @@
 // Main entry point
+// Security: Public access removed for HIPAA compliance
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 
