@@ -26,6 +26,10 @@ steps:
       - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest'
       - '--set-env-vars'
       - 'NODE_ENV=production,FRONTEND_URL=https://hero-ui-w53h35jjsq-ue.a.run.app'
+      - '--vpc-connector'
+      - 'docuhero-connector'
+      - '--vpc-egress'
+      - 'private-ranges-only'
 
 options:
   logging: CLOUD_LOGGING_ONLY
