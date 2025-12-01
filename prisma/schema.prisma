@@ -1,5 +1,5 @@
 // Prisma Schema for DocuHero API
-// Based on Team Member & User Schema requirements
+// Complete schema with all models for healthcare documentation platform
 
 generator client {
   provider = "prisma-client-js"
@@ -10,142 +10,514 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum for User Roles
-enum UserRole {
-  CLIENT           // Read-only access to own profile
-  PROVIDER         // Lowest-privilege provider-only level
-  SUPERVISOR       // Case Manager/Supervisor with higher privileges
-  AGENCY_ADMIN     // Agency administrator
-}
+// ============================================================================
+// ENUMS
+// ============================================================================
 
-// Enum for Agency Types
-enum AgencyType {
-  AGENCY          // Regular agency with employees
-  SOLO_PRACTICE   // Independent provider (sole proprietor)
-}
-
-// Enum for Active Sectors
-enum Sector {
-  DD              // Developmental Disabilities
-  HOME_HEALTH     // Home Health
-  // Add more sectors as needed
-}
-
-// Enum for Patient Status
-enum PatientStatus {
-  ACTIVE
+enum AgencyStatus {
   PENDING
-  HOSPITALIZED
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum UserRole {
+  AGENCY_ADMIN
+  EMPLOYEE
+  GUARDIAN
+  CASE_MANAGER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum ClientStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
   DISCHARGED
 }
 
-// Enum for Risk Level
-enum RiskLevel {
+enum AuthorizationStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum ISPStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  SUPERSEDED
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ACHIEVED
+  DISCONTINUED
+}
+
+enum DocumentType {
+  PROGRESS_NOTE
+  INCIDENT_REPORT
+  ISP_REVIEW
+  TRANSPORT_LOG
+  MEDICATION_ADMIN
+  ATTENDANCE
+}
+
+enum DocumentStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CORRECTIONS_NEEDED
+}
+
+enum IncidentSeverity {
   LOW
   MEDIUM
   HIGH
+  CRITICAL
 }
 
-// User Model - Represents all types of authenticated users
-// Supports: Agency Admin, Provider/Employee, Case Manager/Supervisor, Client (read-only), Independent Provider
-model User {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String   @unique
-  password    String?  // Hashed password (null for invited users)
-  phone       String?
-  role        UserRole
-  title       String?  // Job title for display on reports
-  specialties String[] // For Case Managers/Supervisors (e.g., ["behavioral_support", "autism"])
-  
-  // Relationships
-  agencyId    String?  @map("agency_id")
-  agency      Agency?  @relation("AgencyUsers", fields: [agencyId], references: [id])
-  
-  supervisorId String? @map("supervisor_id")
-  supervisor   User?   @relation("UserSupervisor", fields: [supervisorId], references: [id])
-  supervisees  User[]  @relation("UserSupervisor")
-  
-  // Client-specific field: Links CLIENT role users to their patient profile
-  patientLink String?  @unique @map("patient_link") // patientId they can view
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([agencyId])
-  @@index([supervisorId])
-  @@index([email])
-  @@map("users")
+enum IncidentStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  RESOLVED
+  CLOSED
 }
 
-// Agency Model - Represents both regular agencies and solo practices
+enum CredentialStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  REVOKED
+}
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
 model Agency {
-  id             String      @id @default(cuid())
-  name           String      // Public-facing display name
-  legalName      String?     // Legal name for contracts and billing (optional for solo practice)
-  agencyType     AgencyType  // AGENCY or SOLO_PRACTICE
-  ein            String?     // Tax ID (EIN) - required for agencies, optional for solo
-  defaultState   String      // Sets default compliance pack (e.g., "OH")
-  activeSectors  Sector[]    // Sectors the agency operates in
-  agencyMPI      String?     // National Provider Identifier (NPI/MPI)
-  providerNumbers Json?      // Flexible JSON: [{"payer": "Medicaid_OH", "id": "M123"}]
-  
-  // Address fields
-  address        String?
-  city           String?
-  state          String?
-  zipCode        String?     @map("zip_code")
-  
-  // Relationships
-  users          User[]      @relation("AgencyUsers")
-  patients       Patient[]   @relation("AgencyPatients")
-  
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  id        String       @id @default(uuid())
+  name      String
+  email     String       @unique
+  phone     String?
+  address   String?
+  city      String?
+  state     String // OH, GA
+  zipCode   String?
+  sectors   String[] // DD, HOME_HEALTH, SUBSTANCE_USE, K12, FOSTER_CARE
+  status    AgencyStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  @@index([agencyType])
-  @@index([defaultState])
+  users       User[]
+  clients     Client[]
+  credentials AgencyCredential[]
+  documents   Document[]
+  auditLogs   AuditLog[]
+
   @@map("agencies")
 }
 
-// Patient Model - Represents Person Served (Client) with PHI data
-// All sensitive fields are marked as encrypted in comments - encryption handled at application layer
-model Patient {
-  id                    String        @id @default(cuid())
-  
-  // Encrypted PHI Fields
-  encryptedFirstName    String        @map("encrypted_first_name") // PHI: Legal first name
-  encryptedLastName     String        @map("encrypted_last_name")  // PHI: Legal last name
-  preferredName         String        @map("preferred_name")       // What Provider should call them
-  encryptedDOB          DateTime      @map("encrypted_dob")        // PHI: Date of birth
-  encryptedSSN          String?       @map("encrypted_ssn")        // PHI: Required for billing/ID
-  encryptedMedicaidNumber String?     @map("encrypted_medicaid_number") // PHI: Primary funding ID
-  encryptedInsuranceInfo Json?        @map("encrypted_insurance_info") // PHI: [{"payer": "Aetna", "policy": "123"}]
-  encryptedAddress      Json?         @map("encrypted_address")    // PHI: Residential address
-  
-  // Status and Risk Management
-  status                PatientStatus @default(ACTIVE)
-  riskLevel             RiskLevel?    @map("risk_level") // (LOW, MEDIUM, HIGH) for crisis prevention
-  admissionDate         DateTime      @map("admission_date") // For tracking service duration
-  
-  // Consent and Contact Information
-  consents              Json?         // {"photoRelease": true, "dataSharing": false} - HIPAA/FERPA/Photo
-  emergencyContacts     Json?         @map("emergency_contacts") // [{"name": "Mary Mays", "relation": "Mother"}]
-  externalContacts      Json?         @map("external_contacts") // [{"role": "PCP", "name": "Dr. Smith"}]
-  
-  // Critical At-a-Glance Field for Providers
-  clientSummary         Json?         @map("client_summary") // Structured summary data
-  
-  // Relationships
-  agencyId              String?       @map("agency_id")
-  agency                Agency?       @relation("AgencyPatients", fields: [agencyId], references: [id])
-  
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
+model User {
+  id          String     @id @default(uuid())
+  firebaseUid String     @unique
+  email       String?
+  phone       String?
+  firstName   String
+  lastName    String
+  role        UserRole
+  status      UserStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  // Employee-specific
+  assignedClients ClientAssignment[]
+  documents       Document[]
+  heroPoints      HeroPoints?
+  credentials     UserCredential[]
+
+  // Guardian-specific
+  guardianOf ClientGuardian[]
+
+  auditLogs AuditLog[]
 
   @@index([agencyId])
-  @@index([status])
-  @@index([riskLevel])
-  @@map("patients")
+  @@index([firebaseUid])
+  @@map("users")
+}
+
+model Client {
+  id          String       @id @default(uuid())
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime
+  gender      String?
+  address     String?
+  city        String?
+  state       String
+  zipCode     String?
+  medicaidId  String?
+  sector      String // DD, HOME_HEALTH, etc.
+  status      ClientStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id])
+
+  guardians      ClientGuardian[]
+  assignments    ClientAssignment[]
+  isps           ISP[]
+  documents      Document[]
+  authorizations ClientAuthorization[]
+
+  @@index([agencyId])
+  @@map("clients")
+}
+
+// ============================================================================
+// RELATIONSHIP ENTITIES
+// ============================================================================
+
+model ClientGuardian {
+  id           String   @id @default(uuid())
+  relationship String // PARENT, LEGAL_GUARDIAN, etc.
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([clientId, userId])
+  @@map("client_guardians")
+}
+
+model ClientAssignment {
+  id             String    @id @default(uuid())
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([clientId, userId])
+  @@map("client_assignments")
+}
+
+model ClientAuthorization {
+  id        String              @id @default(uuid())
+  type      String // SERVICES, DATA_SHARING, etc.
+  grantedBy String // Guardian user ID
+  grantedAt DateTime            @default(now())
+  expiresAt DateTime?
+  signature String? // Base64 signature image
+  status    AuthorizationStatus @default(ACTIVE)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  @@map("client_authorizations")
+}
+
+// ============================================================================
+// ISP (INDIVIDUAL SERVICE PLAN)
+// ============================================================================
+
+model ISP {
+  id             String    @id @default(uuid())
+  type           String // ISP, IEP
+  effectiveDate  DateTime
+  expirationDate DateTime
+  rawDocumentUrl String? // Original uploaded PDF/DOCX
+  extractedData  Json? // AI-extracted structured data
+  status         ISPStatus @default(ACTIVE)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  goals    ISPGoal[]
+  services AuthorizedService[]
+
+  @@index([clientId])
+  @@map("isps")
+}
+
+model ISPGoal {
+  id          String     @id @default(uuid())
+  goalNumber  Int
+  title       String
+  description String
+  targetDate  DateTime?
+  status      GoalStatus @default(IN_PROGRESS)
+
+  ispId String
+  isp   ISP    @relation(fields: [ispId], references: [id])
+
+  progressNotes GoalProgress[]
+
+  @@index([ispId])
+  @@map("isp_goals")
+}
+
+model AuthorizedService {
+  id              String  @id @default(uuid())
+  serviceType     String
+  unitsAuthorized Int?
+  unitType        String? // HOURS, UNITS, etc.
+  frequency       String? // DAILY, WEEKLY, etc.
+
+  ispId String
+  isp   ISP    @relation(fields: [ispId], references: [id])
+
+  @@map("authorized_services")
+}
+
+// ============================================================================
+// DOCUMENTATION ENTITIES
+// ============================================================================
+
+model Document {
+  id          String         @id @default(uuid())
+  type        DocumentType
+  status      DocumentStatus @default(DRAFT)
+  serviceDate DateTime
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewedBy  String?
+  reviewNotes String?
+
+  // Voice & AI
+  audioUrl       String?
+  transcript     String?
+  structuredData Json? // AI-extracted form fields
+  aiConfidence   Float?
+
+  // Location
+  latitude           Float?
+  longitude          Float?
+  locationCapturedAt DateTime?
+
+  // Compliance
+  complianceScore Float?
+  complianceFlags Json? // Array of validation issues
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id])
+
+  goalProgress   GoalProgress[]
+  attestations   Attestation[]
+  incidentReport IncidentReport?
+
+  @@index([clientId])
+  @@index([authorId])
+  @@index([agencyId])
+  @@index([serviceDate])
+  @@map("documents")
+}
+
+model GoalProgress {
+  id             String   @id @default(uuid())
+  progressNotes  String
+  progressRating Int? // 1-5 scale
+  createdAt      DateTime @default(now())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  goalId     String
+  goal       ISPGoal  @relation(fields: [goalId], references: [id])
+
+  @@map("goal_progress")
+}
+
+// ============================================================================
+// INCIDENT REPORTS
+// ============================================================================
+
+model IncidentReport {
+  id                String           @id @default(uuid())
+  category          String // MUI categories for Ohio, etc.
+  severity          IncidentSeverity
+  incidentDate      DateTime
+  incidentTime      String?
+  location          String?
+  description       String
+  immediateActions  String?
+  witnesses         String?
+  injuries          String?
+  notificationsSent Json? // Who was notified and when
+  resolutionNotes   String?
+  resolvedAt        DateTime?
+  status            IncidentStatus   @default(OPEN)
+
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id])
+
+  @@map("incident_reports")
+}
+
+// ============================================================================
+// CREDENTIALS & CERTIFICATIONS
+// ============================================================================
+
+model UserCredential {
+  id             String           @id @default(uuid())
+  type           String // CPR, FIRST_AID, MEDICATION_ADMIN, etc.
+  issuedDate     DateTime
+  expirationDate DateTime?
+  documentUrl    String?
+  status         CredentialStatus @default(ACTIVE)
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  createdAt      DateTime         @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("user_credentials")
+}
+
+model AgencyCredential {
+  id             String           @id @default(uuid())
+  type           String // LICENSE, CERTIFICATION, INSURANCE, etc.
+  name           String
+  issuedBy       String?
+  issuedDate     DateTime
+  expirationDate DateTime?
+  documentUrl    String?
+  status         CredentialStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId])
+  @@map("agency_credentials")
+}
+
+// ============================================================================
+// BLOCKCHAIN ATTESTATIONS
+// ============================================================================
+
+model Attestation {
+  id                   String    @id @default(uuid())
+  documentHash         String
+  hederaTopicId        String?
+  hederaSequenceNumber BigInt?
+  hederaTimestamp      DateTime?
+  hederaTransactionId  String?
+  receipt              Json?
+  createdAt            DateTime  @default(now())
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  @@index([documentId])
+  @@map("attestations")
+}
+
+// ============================================================================
+// HERO POINTS
+// ============================================================================
+
+model HeroPoints {
+  id             String    @id @default(uuid())
+  totalPoints    Int       @default(0)
+  lifetimePoints Int       @default(0)
+  level          Int       @default(1)
+  streak         Int       @default(0)
+  lastActivityAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  transactions PointTransaction[]
+
+  @@map("hero_points")
+}
+
+model PointTransaction {
+  id          String   @id @default(uuid())
+  action      String // DOCUMENT_SUBMITTED, ON_TIME_BONUS, etc.
+  points      Int
+  description String?
+  createdAt   DateTime @default(now())
+
+  heroPointsId String
+  heroPoints   HeroPoints @relation(fields: [heroPointsId], references: [id])
+
+  @@index([heroPointsId])
+  @@map("point_transactions")
+}
+
+// ============================================================================
+// AUDIT LOGGING
+// ============================================================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String // CREATE, READ, UPDATE, DELETE
+  entityType String // User, Client, Document, etc.
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  @@index([userId])
+  @@index([agencyId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// STATE RULES
+// ============================================================================
+
+model StateRulePack {
+  id            String   @id @default(uuid())
+  state         String // OH, GA
+  sector        String // DD, HOME_HEALTH, etc.
+  program       String? // SELF, IO, COMP, NOW, etc.
+  version       String
+  effectiveDate DateTime
+  rules         Json // Structured rule definitions
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([state, sector, program, version])
+  @@map("state_rule_packs")
 }
