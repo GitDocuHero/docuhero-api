@@ -1,150 +1,85 @@
-// Authentication routes: login, signup, password management
+// Authentication routes: Firebase-based authentication
+// Firebase handles auth, this API syncs users to database
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import { body, validationResult } from 'express-validator';
 import { generateToken } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
-const SALT_ROUNDS = 12; // bcrypt rounds (higher = more secure but slower)
 
 /**
- * POST /auth/signup
- * Create new user account
+ * POST /auth/sync-user
+ * Sync Firebase user to database (called after Firebase auth)
  */
 router.post(
-  '/signup',
+  '/sync-user',
   [
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    body('firebaseUid').notEmpty(),
+    body('email').optional().isEmail().normalizeEmail(),
+    body('phone').optional(),
     body('firstName').trim().notEmpty(),
     body('lastName').trim().notEmpty(),
-    body('role').isIn(['CLIENT', 'PROVIDER', 'SUPERVISOR', 'AGENCY_ADMIN']),
+    body('role').isIn(['AGENCY_ADMIN', 'EMPLOYEE', 'GUARDIAN', 'CASE_MANAGER']),
   ],
   async (req: Request, res: Response): Promise<void> => {
-    // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return;
     }
 
-    const { email, password, firstName, lastName, role } = req.body;
+    const { firebaseUid, email, phone, firstName, lastName, role, agencyId } = req.body;
 
     try {
-      // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (existingUser) {
-        res.status(409).json({ error: 'Email already registered' });
-        return;
-      }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-      // Create user
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
+      // Upsert user (create if not exists, update if exists)
+      const user = await prisma.user.upsert({
+        where: { firebaseUid },
+        create: {
+          firebaseUid,
+          email: email || null,
+          phone: phone || null,
           firstName,
           lastName,
           role,
+          agencyId: agencyId || null,
+          status: 'PENDING',
+        },
+        update: {
+          email: email || null,
+          phone: phone || null,
+          firstName,
+          lastName,
         },
         select: {
           id: true,
+          firebaseUid: true,
           email: true,
+          phone: true,
           firstName: true,
           lastName: true,
           role: true,
+          status: true,
+          agencyId: true,
           createdAt: true,
         },
       });
 
-      // Generate JWT token
+      // Generate JWT token for API access
       const token = generateToken({
         userId: user.id,
-        email: user.email,
+        email: user.email || user.phone || '',
         role: user.role,
       });
 
-      res.status(201).json({
-        message: 'Account created successfully',
+      res.status(200).json({
+        message: 'User synced successfully',
         user,
         token,
       });
     } catch (error) {
-      console.error('Signup error:', error);
-      res.status(500).json({ error: 'Failed to create account' });
-    }
-  }
-);
-
-/**
- * POST /auth/login
- * Authenticate user and return JWT token
- */
-router.post(
-  '/login',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').notEmpty(),
-  ],
-  async (req: Request, res: Response): Promise<void> => {
-    // Validate input
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
-    }
-
-    const { email, password } = req.body;
-
-    try {
-      // Find user
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (!user || !user.password) {
-        // Generic error message to prevent email enumeration
-        res.status(401).json({ error: 'Invalid credentials' });
-        return;
-      }
-
-      // Verify password
-      const validPassword = await bcrypt.compare(password, user.password);
-
-      if (!validPassword) {
-        res.status(401).json({ error: 'Invalid credentials' });
-        return;
-      }
-
-      // Generate JWT token
-      const token = generateToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      });
-
-      res.json({
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-        },
-        token,
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ error: 'Login failed' });
+      console.error('User sync error:', error);
+      res.status(500).json({ error: 'Failed to sync user' });
     }
   }
 );

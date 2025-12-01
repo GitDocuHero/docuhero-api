@@ -45,10 +45,10 @@ app.get('/', (req, res) => {
   res.json({
     message: 'DocuHero API',
     version: '2.0.0',
-    security: 'JWT authentication required',
+    security: 'Firebase + JWT authentication',
     endpoints: {
       health: '/health',
-      auth: '/auth/login, /auth/signup, /auth/verify',
+      auth: '/auth/sync-user, /auth/verify',
       api: '/api/* (authenticated)'
     }
   });
@@ -73,11 +73,14 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
       where: { id: req.user!.userId },
       select: {
         id: true,
+        firebaseUid: true,
         email: true,
+        phone: true,
         firstName: true,
         lastName: true,
         role: true,
-        title: true,
+        status: true,
+        agencyId: true,
         createdAt: true,
       },
     });
@@ -108,9 +111,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🔒 JWT authentication enabled`);
+  console.log(`🔒 Firebase + JWT authentication enabled`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔐 Auth endpoints: /auth/login, /auth/signup`);
+  console.log(`🔐 Auth endpoints: /auth/sync-user, /auth/verify`);
 });
 
 // Graceful shutdown
